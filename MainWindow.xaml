@@ -85,11 +85,11 @@
                                                          Style="{StaticResource GradientVerticalBar}"
                                                          Minimum="-60" Maximum="0"
                                                          Value="{Binding LevelDecibel, Mode=OneWay}"
-                                                         Width="30"
-                                                         Height="150"/>
+                                                         Width="15"
+                                                         Height="100"/>
 
-                                            
-                                            <Rectangle Fill="Blue" Width="{Binding ElementName=VerticalProgressBar, Path=ActualWidth}" Height="2" 
+
+                                            <Rectangle Fill="#f76f34" Width="{Binding ElementName=VerticalProgressBar, Path=ActualWidth}" Height="2" 
                                                        HorizontalAlignment="Stretch" 
                                                        VerticalAlignment="Top"
                                                        Visibility="{Binding IsPeakHoldVisible, Converter={StaticResource BoolToVis}}">

@@ -8,11 +8,11 @@ namespace LevelBarApp.ViewModels
     using System.Collections.Generic;
     using System.Collections.ObjectModel;
     using System.Linq;
-    using System.Security.Policy;
     using System.Windows.Threading;
     using GalaSoft.MvvmLight;
     using GalaSoft.MvvmLight.Command;
     using LevelBarGeneration;
+    using System.Configuration;
 
     /// <summary>
     /// MainWindowViewModel
@@ -25,6 +25,7 @@ namespace LevelBarApp.ViewModels
         private RelayCommand connectToGeneratorCommand;
         private RelayCommand disconnectToGeneratorCommand;
         private DispatcherTimer _dispatcherTimer;
+        private readonly int _levelBarViewUpdateRate;
         private Dictionary<int, float> _levelsBuffer = new Dictionary<int, float>();
 
         // Constructor
@@ -41,10 +42,13 @@ namespace LevelBarApp.ViewModels
             levelBarGenerator.ChannelLevelDataReceived += LevelBarGenerator_ChannelDataReceived;
             levelBarGenerator.ChannelRemoved += LevelBarGenerator_ChannelRemoved;
 
+
+            //Get from config file
+            _levelBarViewUpdateRate = int.Parse(ConfigurationManager.AppSettings["LevelBarViewUpdateRate"]);
             //Configure Dispatcher Timer for Scheduled updates of the bars
             _dispatcherTimer = new DispatcherTimer 
             {
-                Interval = TimeSpan.FromMilliseconds(150)
+                Interval = TimeSpan.FromMilliseconds(_levelBarViewUpdateRate)
             };
 
             _dispatcherTimer.Tick += UpdateViewLevelBars;
@@ -141,8 +145,11 @@ namespace LevelBarApp.ViewModels
         }
 
 
-
+        
         private bool _isConnected = false;
+        /// <summary>
+        /// Checks if the app is connected to the generator. Disables or enables the connect button
+        /// </summary>
         public bool IsConnected
         {
             get
@@ -158,6 +165,9 @@ namespace LevelBarApp.ViewModels
         }
 
         private bool _isDisconnected = true;
+        /// <summary>
+        /// Checks if the app is disconnected to the generator. Disables or enables the disconnect button
+        /// </summary>
         public bool IsDisconnected
         {
             get

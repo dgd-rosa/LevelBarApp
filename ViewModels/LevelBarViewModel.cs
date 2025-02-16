@@ -5,7 +5,6 @@
 namespace LevelBarApp.ViewModels
 {
     using System;
-    using System.Reflection;
     using System.Windows.Threading;
     using GalaSoft.MvvmLight;
 
@@ -29,6 +28,7 @@ namespace LevelBarApp.ViewModels
         {
             _timerPeakHold = new DispatcherTimer();
 
+            //Define the time span for the peak hold to be seen
             _timerPeakHold.Interval = TimeSpan.FromSeconds(2);
             _timerPeakHold.Tick += UpdatePeakHoldVisibility;
         }
