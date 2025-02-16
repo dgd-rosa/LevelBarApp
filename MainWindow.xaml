@@ -31,13 +31,18 @@
                     Content="Connect"
                     Style="{StaticResource MyButton}"
                     IsEnabled="{Binding IsDisconnected}" 
-                    Command="{Binding ConnectGeneratorCommand}"/>
+                    Command="{Binding ConnectGeneratorCommand}"
+                        BorderBrush="Green" BorderThickness="2"
+                        Background="#ede4e4"/>
                 <Button Grid.Column="1"
-                    Content="Disconnect"
-                    Style="{StaticResource MyButton}"
-                    Margin="20 0 0 0"
-                    IsEnabled="{Binding IsConnected}" 
-                    Command="{Binding DisconnectGeneratorCommand}"/>
+                        Content="Disconnect"
+                        Style="{StaticResource MyButton}"
+                        Margin="20 0 0 0"
+                        BorderBrush="Red"
+                        BorderThickness="2"
+                        Background="#ede4e4"
+                        IsEnabled="{Binding IsConnected}"
+                        Command="{Binding DisconnectGeneratorCommand}"/>
 
             </Grid>
 

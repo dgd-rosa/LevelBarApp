@@ -100,7 +100,8 @@ namespace LevelBarApp.ViewModels
                 maxLevel = value;
                 RaisePropertyChanged(nameof(MaxLevel));
                 RaisePropertyChanged(nameof(MaxLevelDecibel));
-                IsPeakHoldVisible = true;
+                if(maxLevel > 0)
+                    IsPeakHoldVisible = true;
             }
         }
 

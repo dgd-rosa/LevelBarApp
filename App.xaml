@@ -13,9 +13,15 @@
             <vm:ViewModelLocator x:Key="Locator" d:IsDataSource="True" />
 
             <Style x:Key="MyButton" TargetType="Button">
-                <Setter Property="FontSize" Value="15" />
+                <Setter Property="FontSize" Value="14" />
                 <Setter Property="FontWeight" Value="Bold" />
-                <Setter Property="Padding" Value="5 10"/>
+                <Setter Property="Padding" Value="20 10"/>
+                <Setter Property="FontFamily" Value="Arial"/>
+                <Style.Resources>
+                    <Style TargetType="Border">
+                        <Setter Property="CornerRadius" Value="5" />
+                    </Style>
+                </Style.Resources>
             </Style>
 
             <LinearGradientBrush x:Key="GreenToRedGradient" StartPoint="0,0" EndPoint="1,0">
