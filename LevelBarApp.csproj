@@ -88,6 +88,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="AppConfigurationSettings.cs" />
     <Compile Include="Converters\MaxLevelToYConverter.cs" />
     <Compile Include="ViewModels\LevelBarViewModel.cs" />
     <Compile Include="ViewModels\ViewModelLocator.cs" />

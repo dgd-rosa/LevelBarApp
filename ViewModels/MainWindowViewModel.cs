@@ -44,7 +44,9 @@ namespace LevelBarApp.ViewModels
 
 
             //Get from config file
-            _levelBarViewUpdateRate = int.Parse(ConfigurationManager.AppSettings["LevelBarViewUpdateRate"]);
+            _levelBarViewUpdateRate = AppConfigurationSettings.LevelBarViewUpdateRate;
+
+
             //Configure Dispatcher Timer for Scheduled updates of the bars
             _dispatcherTimer = new DispatcherTimer 
             {

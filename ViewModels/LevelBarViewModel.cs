@@ -22,14 +22,18 @@ namespace LevelBarApp.ViewModels
         private int id;
         private DispatcherTimer _timerPeakHold;
         private bool isPeakHoldVisible = false;
+        private int _peakHoldMaintenanceTime;
 
-
+        /// <summary>
+        /// LevelBarViewModel
+        /// </summary>
         public LevelBarViewModel()
         {
             _timerPeakHold = new DispatcherTimer();
 
             //Define the time span for the peak hold to be seen
-            _timerPeakHold.Interval = TimeSpan.FromSeconds(2);
+            _peakHoldMaintenanceTime = AppConfigurationSettings.PeakHoldMaintenanceTime;
+            _timerPeakHold.Interval = TimeSpan.FromSeconds(_peakHoldMaintenanceTime);
             _timerPeakHold.Tick += UpdatePeakHoldVisibility;
         }
 
@@ -116,16 +120,14 @@ namespace LevelBarApp.ViewModels
             get => isPeakHoldVisible;
             set
             {
-                if (value != isPeakHoldVisible)
-                {
-                    isPeakHoldVisible = value;
-                    RaisePropertyChanged(nameof(IsPeakHoldVisible));
+                isPeakHoldVisible = value;
+                RaisePropertyChanged(nameof(IsPeakHoldVisible));
 
-                    //if the peakhold is visible than the timer should start
-                    if (isPeakHoldVisible == true)
-                    {
-                        _timerPeakHold.Start();
-                    }
+                //if the peakhold is visible than the timer should start
+                if (isPeakHoldVisible == true)
+                {
+                    _timerPeakHold.Interval = TimeSpan.FromSeconds(_peakHoldMaintenanceTime); //Reset Timer
+                    _timerPeakHold.Start();
                 }
             }
         }
