@@ -165,6 +165,7 @@ namespace LevelBarApp.ViewModels
         {
             _timerPeakHold.Stop();
             IsPeakHoldVisible = false;
+            MaxLevel = 0; // Reset the Peak
         }
     }
 }
