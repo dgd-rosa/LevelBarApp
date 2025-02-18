@@ -12,21 +12,20 @@ namespace LevelBarGeneration
     /// <summary>
     /// LevelBarGenerator
     /// </summary>
-    public class LevelBarGenerator
+    public class LevelBarGenerator : ILevelBarGenerator
     {
         // Fields
-        private readonly IScheduler scheduler;
         private GeneratorState state = GeneratorState.Stopped;
+        private DataThroughputJob dataThroughputJob;
 
         // Constructor
 
         /// <summary>
         /// Prevents a default instance of the <see cref="LevelBarGenerator"/> class from being created.
         /// </summary>
-        private LevelBarGenerator()
+        public LevelBarGenerator()
         {
-            StdSchedulerFactory factory = new StdSchedulerFactory();
-            scheduler = factory.GetScheduler().Result;
+            dataThroughputJob = new DataThroughputJob(this);
         }
 
         // Events
@@ -53,13 +52,6 @@ namespace LevelBarGeneration
 
         // Properties
 
-        /// <summary>
-        /// Gets the instance.
-        /// </summary>
-        /// <value>
-        /// The instance.
-        /// </value>
-        public static LevelBarGenerator Instance { get; } = new LevelBarGenerator();
 
         // Methods
 
@@ -67,39 +59,36 @@ namespace LevelBarGeneration
         /// Connects this instance.
         /// </summary>
         /// <returns>Connect Task</returns>
-        public async Task Connect()
+        public void Connect()
         {
-            if (scheduler != null)
+            if (state == GeneratorState.Running)
             {
-                if (state == GeneratorState.Running)
-                {
-                    Console.WriteLine("Generator is already connected");
-                    return;
-                }
-
-                // What properties are used
-                int channelBlockSize = 512;
-                int samplingRate = 16384;
-                double samplingTime = 1.0d;
-
-                // Setup the channels
-                int numberOfChannels = RegisterChannels();
-
-                // Setup and fire the data generator
-                await SetupDataGenerator(channelBlockSize, samplingRate, samplingTime, numberOfChannels);
-
-                state = GeneratorState.Running;
-                GeneratorStateChanged?.Invoke(this, new GeneratorStateChangedEventArgs { State = GeneratorState.Running });
+                Console.WriteLine("Generator is already connected");
+                return;
             }
+
+            // What properties are used
+            int channelBlockSize = 512;
+            int samplingRate = 16384;
+            double samplingTime = 1.0d;
+
+            // Setup the channels
+            int numberOfChannels = RegisterChannels();
+
+            // Setup and fire the data generator
+            SetupDataGenerator(channelBlockSize, samplingRate, samplingTime, numberOfChannels);
+
+            state = GeneratorState.Running;
+            GeneratorStateChanged?.Invoke(this, new GeneratorStateChangedEventArgs { State = GeneratorState.Running });
         }
 
         /// <summary>
         /// Disconnects this instance.
         /// </summary>
         /// <returns>Disconnect Task</returns>
-        public async Task Disconnect()
+        public void Disconnect()
         {
-            await scheduler.DeleteJob(new JobKey("job"));
+            dataThroughputJob.CancelDataGeneration();
 
             DeregisterChannels();
 
@@ -112,30 +101,18 @@ namespace LevelBarGeneration
         /// </summary>
         /// <param name="channelIds">The channel ids.</param>
         /// <param name="levels">The levels.</param>
-        internal void ReceiveLevelData(int[] channelIds, float[] levels)
+        public void ReceiveLevelData(int[] channelIds, float[] levels)
         {
             ChannelLevelDataReceived?.Invoke(this, new ChannelDataEventArgs { ChannelIds = channelIds, Levels = levels });
         }
 
-        private async Task SetupDataGenerator(int channelBlockSize, int samplingRate, double samplingTime, int numberOfChannels)
+        private void SetupDataGenerator(int channelBlockSize, int samplingRate, double samplingTime, int numberOfChannels)
         {
-            DataThroughputJob.SetupJob(samplingRate, channelBlockSize, samplingTime, numberOfChannels);
+            dataThroughputJob.SetupJob(samplingRate, channelBlockSize, samplingTime, numberOfChannels);
 
-            await Task.Run(async () =>
-            {
-                IJobDetail throughputJob = JobBuilder.Create<DataThroughputJob>()
-                    .WithIdentity("job")
-                    .Build();
-
-                ITrigger throughputTrigger = TriggerBuilder.Create()
-                    .WithIdentity("trigger")
-                    .WithSimpleSchedule(x => x.WithInterval(TimeSpan.FromMilliseconds((double)(channelBlockSize / 8d) / samplingRate * 1000d)).RepeatForever())
-                    .StartAt(DateTime.Now.AddSeconds(1))
-                    .Build();
-
-                await scheduler.ScheduleJob(throughputJob, throughputTrigger);
-                await scheduler.Start();
-            });
+            double intervalSpan = (double)(channelBlockSize / 8d) / samplingRate * 1000d;
+            
+            var task = dataThroughputJob.GenerateLevelDataAsync(intervalSpan);
         }
 
         private int RegisterChannels()

@@ -47,7 +47,9 @@
             </Grid>
 
 
-            <TextBlock Grid.Row="1" Text="Connecting..."
+            <TextBlock Grid.Row="1" Text="Connecting..." 
+                       FontSize="13"
+                       Foreground="Gray" 
                     Visibility="{Binding IsConnecting, Converter={StaticResource BoolToVis}}"/>
 
 

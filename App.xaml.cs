@@ -4,7 +4,11 @@
 
 namespace LevelBarApp
 {
+    using System;
     using System.Windows;
+    using LevelBarApp.ViewModels;
+    using LevelBarGeneration;
+    using Microsoft.Extensions.DependencyInjection;
 
     /// <summary>
     /// Interaction logic for App.xaml

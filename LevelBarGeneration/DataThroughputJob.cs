@@ -7,6 +7,7 @@ namespace LevelBarGeneration
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
     using MathNet.Numerics;
     using MathNet.Numerics.Distributions;
@@ -15,7 +16,7 @@ namespace LevelBarGeneration
     /// <summary>
     /// MockClientDataThrptJob class
     /// </summary>
-    public class DataThroughputJob : IJob
+    public class DataThroughputJob
     {
         // Fields
         private static int samplingRate;
@@ -28,6 +29,16 @@ namespace LevelBarGeneration
         private static int[] numsRawData;
         private static int jobCounter = 0;
 
+
+        private ILevelBarGenerator _levelBarGenerator;
+        private CancellationTokenSource cancellationTokenSource;
+        private Task _generationTask;
+        private bool _isRunning = false;
+
+        public DataThroughputJob(ILevelBarGenerator levelBarGenerator)
+        {
+            _levelBarGenerator = levelBarGenerator;
+        }
         // Methods
 
         /// <summary>
@@ -37,7 +48,7 @@ namespace LevelBarGeneration
         /// <param name="channelBlockSize">Size of the channel block.</param>
         /// <param name="samplingTime">The sampling time.</param>
         /// <param name="numberOfChannels">The number of channels.</param>
-        public static void SetupJob(int samplingRate, int channelBlockSize, double samplingTime, int numberOfChannels)
+        public void SetupJob(int samplingRate, int channelBlockSize, double samplingTime, int numberOfChannels)
         {
             // Set the data
             DataThroughputJob.samplingRate = samplingRate;
@@ -48,43 +59,72 @@ namespace LevelBarGeneration
         }
 
         /// <summary>
-        /// Called by the <see cref="T:Quartz.IScheduler" /> when a <see cref="T:Quartz.ITrigger" />
-        /// fires that is associated with the <see cref="T:Quartz.IJob" />.
+        /// Creates Task that sends data every few milliseconds
         /// </summary>
-        /// <param name="context">The execution context.</param>
+        /// <param name="millisecondsSpan"></param>
         /// <returns>Task</returns>
-        /// <remarks>
-        /// The implementation may wish to set a  result object on the
-        /// JobExecutionContext before this method exits.  The result itself
-        /// is meaningless to Quartz, but may be informative to
-        /// <see cref="T:Quartz.IJobListener" />s or
-        /// <see cref="T:Quartz.ITriggerListener" />s that are watching the job's
-        /// execution.
-        /// </remarks>
-        public Task Execute(IJobExecutionContext context)
+        public Task GenerateLevelDataAsync(double millisecondsSpan)
         {
-            // Get job context data.
-            SchedulerContext schedulerContext = context.Scheduler.Context;
+            //Prevents duplication
+            if (_isRunning) return Task.CompletedTask;
 
-            // let's not run when there's no data present
-            if (levels == null)
-            {
-                return Task.CompletedTask;
-            }
+            _isRunning = true;
 
-            // Get step of the job
-            jobCounter += 1;
-            if (jobCounter >= levels.Length)
-            {
-                jobCounter = 0;
-            }
+            cancellationTokenSource = new CancellationTokenSource();
+            
+            _generationTask = Task.Run(async () => await SendScheduledData(millisecondsSpan, channelIds, levels, cancellationTokenSource.Token));
 
-            LevelBarGenerator.Instance.ReceiveLevelData(channelIds, levels[jobCounter]);
-
-            return Task.CompletedTask;
+            return _generationTask;
         }
 
-        private static byte[][] GenerateData(out float[][] levels, out int[] channelIds, out int[] numsRawData)
+        /// <summary>
+        /// Creates a task that sends data to the application every 
+        /// <paramref name="millisecondsSpan"/> milliseconds
+        /// </summary>
+        /// <param name="millisecondsSpan"></param>
+        /// <param name="channelIds"></param>
+        /// <param name="levels"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        /// <remarks>
+        /// To end the Loop the <paramref name="cancellationToken"/> 
+        /// must be cancelled
+        /// </remarks>
+        public async Task SendScheduledData(double millisecondsSpan, int[]channelIds, float[][]levels, CancellationToken cancellationToken)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                // let's not run when there's no data present
+                if (levels == null || levels.Length == 0)
+                {
+                    return;
+                }
+
+                // Get step of the job
+                jobCounter += 1;
+                if (jobCounter >= levels.Length)
+                {
+                    jobCounter = 0;
+                }
+
+                _levelBarGenerator.ReceiveLevelData(channelIds, levels[jobCounter]);
+
+                await Task.Delay(TimeSpan.FromMilliseconds(millisecondsSpan));
+            }
+        }
+        /// <summary>
+        /// Method to cancel the task created in GenerateLevelDataAsync
+        /// </summary>
+        public void CancelDataGeneration()
+        {
+            //If there is no task running, no need to cancel it
+            if (!_isRunning || cancellationTokenSource is null) return;
+
+            cancellationTokenSource.Cancel();
+            _isRunning = false;
+        }
+
+        private byte[][] GenerateData(out float[][] levels, out int[] channelIds, out int[] numsRawData)
         {
             // random
             Random randomLevel = new Random();
@@ -171,7 +211,7 @@ namespace LevelBarGeneration
             return rawData;
         }
 
-        private static byte[] GetBytes(double[] values)
+        private byte[] GetBytes(double[] values)
         {
             var result = new byte[values.Length * sizeof(double)];
             Buffer.BlockCopy(values, 0, result, 0, result.Length);

@@ -13,6 +13,10 @@ namespace LevelBarApp.ViewModels
     using GalaSoft.MvvmLight.Command;
     using LevelBarGeneration;
     using System.Configuration;
+    using System.Threading.Tasks;
+    using System.Windows;
+    using System.Diagnostics;
+    using System.Runtime.Remoting.Messaging;
 
     /// <summary>
     /// MainWindowViewModel
@@ -21,9 +25,8 @@ namespace LevelBarApp.ViewModels
     public class MainWindowViewModel : ViewModelBase
     {
         // Fields
-        private readonly LevelBarGenerator levelBarGenerator;
-        private RelayCommand connectToGeneratorCommand;
-        private RelayCommand disconnectToGeneratorCommand;
+        private readonly ILevelBarGenerator _levelBarGenerator;
+
         private DispatcherTimer _dispatcherTimer;
         private readonly int _levelBarViewUpdateRate;
         private Dictionary<int, float> _levelsBuffer = new Dictionary<int, float>();
@@ -33,14 +36,14 @@ namespace LevelBarApp.ViewModels
         /// <summary>
         /// Initializes a new instance of the <see cref="MainWindowViewModel"/> class.
         /// </summary>
-        public MainWindowViewModel()
+        public MainWindowViewModel(ILevelBarGenerator levelBarGenerator)
         {
-            levelBarGenerator = LevelBarGenerator.Instance;
+            _levelBarGenerator = levelBarGenerator;
 
-            levelBarGenerator.GeneratorStateChanged += LevelBarGenerator_GeneratorStateChanged;
-            levelBarGenerator.ChannelAdded += LevelBarGenerator_ChannelAdded;
-            levelBarGenerator.ChannelLevelDataReceived += LevelBarGenerator_ChannelDataReceived;
-            levelBarGenerator.ChannelRemoved += LevelBarGenerator_ChannelRemoved;
+            _levelBarGenerator.GeneratorStateChanged += LevelBarGenerator_GeneratorStateChanged;
+            _levelBarGenerator.ChannelAdded += LevelBarGenerator_ChannelAdded;
+            _levelBarGenerator.ChannelLevelDataReceived += LevelBarGenerator_ChannelDataReceived;
+            _levelBarGenerator.ChannelRemoved += LevelBarGenerator_ChannelRemoved;
 
 
             //Get from config file
@@ -53,7 +56,12 @@ namespace LevelBarApp.ViewModels
 
             _dispatcherTimer.Tick += UpdateViewLevelBars;
             _dispatcherTimer.Start();
+
+            //Initialize Commands
+            ConnectGeneratorCommand = new RelayCommand(() => ConnectToGenerator());
+            DisconnectGeneratorCommand = new RelayCommand(() => DisconnectFromGenerator());
         }
+
 
         // Properties
 
@@ -72,16 +80,7 @@ namespace LevelBarApp.ViewModels
         /// <value>
         /// The connect generator.
         /// </value>
-        public RelayCommand ConnectGeneratorCommand => connectToGeneratorCommand ??
-            (connectToGeneratorCommand = new RelayCommand(async () =>
-            {
-                IsConnecting = true;
-
-                await levelBarGenerator.Connect();
-
-                IsConnecting = false;
-                IsConnected = true;
-            }));
+        public RelayCommand ConnectGeneratorCommand { get; }
 
         /// <summary>
         /// Gets the command to disconnect the generator
@@ -89,14 +88,7 @@ namespace LevelBarApp.ViewModels
         /// <value>
         /// The disconnect generator.
         /// </value>
-        public RelayCommand DisconnectGeneratorCommand => disconnectToGeneratorCommand ??
-            (disconnectToGeneratorCommand = new RelayCommand(async () =>
-            {
-
-                await levelBarGenerator.Disconnect();
-                IsConnected = false;
-
-            }));
+        public RelayCommand DisconnectGeneratorCommand { get; }
 
         
         private GeneratorState _state;
@@ -184,36 +176,70 @@ namespace LevelBarApp.ViewModels
         // Methods
         private void LevelBarGenerator_ChannelAdded(object sender, ChannelChangedEventArgs e)
         {
-            //Create a level bar
-            LevelBarViewModel newLevelBarViewModel = new LevelBarViewModel { Id = e.ChannelId, Name = e.ChannelId.ToString(), Level = 0, MaxLevel=0};
-            LevelBars.Add(newLevelBarViewModel);
+            try
+            {
+                if (e == null)
+                    return;
 
-            
-            if(!_levelsBuffer.ContainsKey(e.ChannelId))
-                _levelsBuffer.Add(e.ChannelId, 0);
+                //Create a level bar
+                LevelBarViewModel newLevelBarViewModel = new LevelBarViewModel { Id = e.ChannelId, Name = e.ChannelId.ToString(), Level = 0, MaxLevel = 0 };
+                LevelBars.Add(newLevelBarViewModel);
+
+
+                if (!_levelsBuffer.ContainsKey(e.ChannelId))
+                    _levelsBuffer.Add(e.ChannelId, 0);
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Error adding channels", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void LevelBarGenerator_ChannelRemoved(object sender, ChannelChangedEventArgs e)
         {
-            // Remove the corresponding LevelBarViewModel
-            int index = LevelBars.ToList().IndexOf(LevelBars.FirstOrDefault(x => x.Id == e.ChannelId));
-            if (index >= 0)
+            try
             {
-                LevelBars.RemoveAt(index);
+                if (e == null)
+                    return;
+
+                // Remove the corresponding LevelBarViewModel
+                int index = LevelBars.ToList().IndexOf(LevelBars.FirstOrDefault(x => x.Id == e.ChannelId));
+                if (index >= 0)
+                {
+                    LevelBars.RemoveAt(index);
+                    _levelsBuffer[index] = 0;
+                }
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Error Removing Channel!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         private void LevelBarGenerator_GeneratorStateChanged(object sender, GeneratorStateChangedEventArgs e)
         {
+            if (e == null)
+                return;
+
             State = e.State;
         }
 
         private void LevelBarGenerator_ChannelDataReceived(object sender, ChannelDataEventArgs e)
         {
-            for (int i = 0; i < e.ChannelIds.Count(); i++)
+            try
             {
-                //Update Buffer with the latest value
-                _levelsBuffer[e.ChannelIds[i]] = e.Levels[i];
+                if (e == null)
+                    return;
+
+                for (int i = 0; i < e.ChannelIds.Count(); i++)
+                {
+                    //Update Buffer with the latest value
+                    _levelsBuffer[e.ChannelIds[i]] = e.Levels[i];
+                }
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Error receiving the data", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -243,6 +269,43 @@ namespace LevelBarApp.ViewModels
                 {
                     levelBar.Level = newValue;
                 }
+            }
+        }
+
+        //Commands functions
+        private void ConnectToGenerator()
+        {
+            try
+            {
+                IsConnecting = true;
+                IsConnected = true;
+
+
+                _levelBarGenerator.Connect();
+
+                
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Error connecting to the Generator!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsConnecting = false;
+            }
+        }
+
+        private void DisconnectFromGenerator()
+        {
+            try
+            {
+                _levelBarGenerator.Disconnect();
+                IsConnected = false;
+                IsConnecting = false;
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Error Disconnecting from generator", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
