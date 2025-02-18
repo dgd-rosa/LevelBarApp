@@ -47,7 +47,7 @@ namespace LevelBarApp.ViewModels
 
 
             //Get from config file
-            _levelBarViewUpdateRate = int.Parse(ConfigurationManager.AppSettings["LevelBarViewUpdateRate"]);
+            _levelBarViewUpdateRate = AppConfigurationSettings.LevelBarViewUpdateRate;
             //Configure Dispatcher Timer for Scheduled updates of the bars
             _dispatcherTimer = new DispatcherTimer 
             {
@@ -189,7 +189,7 @@ namespace LevelBarApp.ViewModels
                 if (!_levelsBuffer.ContainsKey(e.ChannelId))
                     _levelsBuffer.Add(e.ChannelId, 0);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 MessageBox.Show("Error adding channels", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
