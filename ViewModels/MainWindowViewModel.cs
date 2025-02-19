@@ -189,9 +189,9 @@ namespace LevelBarApp.ViewModels
                 if (!_levelsBuffer.ContainsKey(e.ChannelId))
                     _levelsBuffer.Add(e.ChannelId, 0);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                MessageBox.Show("Error adding channels", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Console.WriteLine("Error Adding Channel");
             }
         }
 
@@ -212,7 +212,7 @@ namespace LevelBarApp.ViewModels
             }
             catch (Exception)
             {
-                MessageBox.Show("Error Removing Channel!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Console.WriteLine("Error Removing Channel");
             }
         }
 
@@ -239,7 +239,7 @@ namespace LevelBarApp.ViewModels
             }
             catch (Exception)
             {
-                MessageBox.Show("Error receiving the data", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Console.WriteLine("Error Receiving Data");
             }
         }
 
@@ -278,12 +278,10 @@ namespace LevelBarApp.ViewModels
             try
             {
                 IsConnecting = true;
-                IsConnected = true;
-
 
                 _levelBarGenerator.Connect();
-
                 
+                IsConnected = true;
             }
             catch (Exception)
             {
